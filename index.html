@@ -153,26 +153,47 @@ function ambilAngkaJarak(data) {
 }
 
 function updateJarak(data) {
-  const cm = ambilAngkaJarak(data);
-  if (!Number.isFinite(cm) || cm < 0 || cm > 400) {
-    $("jarak").textContent = "Data tidak valid";
-    $("jarak").className = "big";
-    $("jarakSub").textContent = "Periksa nilai /sigma/jarak di Firebase";
-    $("fill").style.width = "0%";
-    $("obj").setAttribute("cx", 560);
-    $("badge").textContent = "Periksa sensor";
-    $("badge").className = "badge warn";
-    return;
-  }
+    const cm = Number(
+        data?.distance ??
+        data?.jarak ??
+        data?.cm ??
+        data?.jarak_cm
+    );
 
-  const bahaya = cm <= BATAS_CM;
-  $("jarak").textContent = cm.toFixed(1) + " cm";
-  $("jarak").className = "big" + (bahaya ? " warn" : "");
-  $("jarakSub").textContent = bahaya ? "Halangan berada dalam batas peringatan" : "Jarak halangan terdeteksi";
-  $("fill").style.width = Math.max(0, Math.min(100, cm / 4)) + "%";
-  $("obj").setAttribute("cx", 140 + (cm / 400) * 420);
-  $("badge").textContent = bahaya ? "Waspada" : "Aman";
-  $("badge").className = "badge" + (bahaya ? " warn" : "");
+    if (!Number.isFinite(cm) || cm < 0 || cm > 400) {
+        $("jarak").textContent = "Data tidak valid";
+        $("jarakSub").textContent =
+            "HC-SR04 belum memberikan pengukuran valid";
+
+        $("badge").textContent = "Periksa sensor";
+        $("badge").className = "badge warn";
+
+        $("fill").style.width = "0%";
+        $("obj").setAttribute("cx", 560);
+
+        return false;
+    }
+
+    const bahaya = cm <= BATAS_CM;
+
+    $("jarak").textContent = cm.toFixed(1) + " cm";
+    $("jarakSub").textContent = bahaya
+        ? "Halangan sangat dekat"
+        : "Jarak halangan terdeteksi";
+
+    $("badge").textContent = bahaya ? "Waspada" : "Aman";
+    $("badge").className =
+        "badge" + (bahaya ? " warn" : "");
+
+    $("fill").style.width =
+        Math.max(0, Math.min(100, cm / 4)) + "%";
+
+    $("obj").setAttribute(
+        "cx",
+        140 + (cm / 400 * 420)
+    );
+
+    return true;
 }
 
 function wib(utc) {
