@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIGMA Care</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--slate:#3b4660;--slate2:#2f394f;--ink:#334155;--mint:#dcf5e5;--mintTx:#15803d;--red:#fde2e2;--redTx:#b91c1c;--gold:#a8895a;--mute:#cbd3e1;--ok:#22c55e;--bad:#ef4444}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff;color:var(--ink);display:flex;justify-content:center}
+main{width:100%;max-width:1180px;padding:22px 24px 28px}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:21px;align-items:stretch}
+.col{display:flex;flex-direction:column}
+.col .card{margin-bottom:21px}
+.col:last-child .card{margin-bottom:0}
+.mapcard{display:flex;flex-direction:column;height:100%}
+.radar{position:relative;height:210px;padding:0;overflow:hidden;margin-bottom:0!important}
+.radar svg{position:absolute;inset:0;width:100%;height:100%}
+.radar .cap{position:absolute;right:24px;bottom:18px;text-align:right;font-weight:700;font-size:16px;line-height:1.3}
+#obj{transition:cx .5s}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.logo{width:60px;height:60px;border-radius:14px;background:var(--slate);color:#fff;font-size:34px;font-weight:800;display:grid;place-items:center}
+h1{font-size:25px;font-weight:700}
+.card{background:var(--slate);color:#fff;border-radius:28px;padding:24px;margin-bottom:21px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.card h2{font-size:21px;font-weight:700}.card p.s{color:var(--mute);margin-top:2px;font-size:16px}
+.badge{padding:9px 17px;border-radius:99px;font-weight:700;font-size:16px;background:var(--mint);color:var(--mintTx)}
+.badge.warn{background:var(--red);color:var(--redTx)}
+hr{border:0;border-top:1px solid rgba(255,255,255,.15);margin:18px 0}
+.k{color:var(--mute);font-size:16px}.v{font-weight:700;font-size:19px}.r{text-align:right}
+.big{font-size:35px;font-weight:800;margin:8px 0 4px;color:var(--mute)}.big.warn{color:#ffb4b4}
+.bar{height:19px;border-radius:99px;background:var(--slate2);overflow:hidden;margin-top:22px}
+.fill{height:100%;width:0;transition:width .5s;background:repeating-linear-gradient(120deg,var(--gold) 0 10px,#3b4660 10px 18px)}
+.scale{display:flex;justify-content:space-between;color:var(--mute);margin-top:8px;font-size:16px}
+#map{flex:1;min-height:420px;border-radius:20px;margin-top:16px;background:var(--slate2);z-index:0}
+.gps{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;margin-top:16px}
+.btn{display:inline-block;margin-top:16px;padding:11px 18px;border-radius:99px;background:#fff;color:var(--slate);font-weight:700;text-decoration:none;font-size:15px}
+.btn.off{opacity:.4;pointer-events:none}
+.status{text-align:center;color:#64748b;font-size:16px;display:flex;justify-content:center;align-items:center;gap:9px}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--ok)}.dot.off{background:var(--bad)}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.col .card:last-child{margin-bottom:21px}.mapcard{height:auto}#map{min-height:340px;flex:none;height:340px}}
+@media(max-width:480px){main{padding:16px}.big{font-size:28px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="logo">Σ</div><h1>SIGMA Care</h1></div>
+
+  <div class="grid">
+  <div class="col">
+  <section class="card">
+    <div class="row"><div><h2>Tongkat SIGMA</h2><p class="s">Sistem pemantauan jarak halangan</p></div>
+      <span class="badge" id="badge">Aman</span></div>
+    <hr>
+    <div class="row"><div><div class="k">Sinyal masuk</div><div class="v" id="sinyal">--:--:--</div></div>
+      <div class="r"><div class="k">Batas peringatan</div><div class="v"><span id="batas">60</span> cm</div></div></div>
+  </section>
+
+  <section class="card">
+    <div class="v" style="font-size:18px">Jarak halangan di depan</div>
+    <div class="big" id="jarak">Menunggu data</div>
+    <p class="s" id="jarakSub" style="color:var(--mute)">Belum ada data dari tongkat</p>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="scale"><span>0</span><span>100</span><span>200</span><span>300</span><span>400 cm</span></div>
+  </section>
+
+  <section class="card radar" aria-hidden="true">
+    <svg viewBox="0 0 600 210" preserveAspectRatio="xMidYMid slice">
+      <circle cx="90" cy="105" r="30" fill="none" stroke="#8b96ad" stroke-width="3"/>
+      <circle cx="90" cy="105" r="15" fill="#fff"/>
+      <path d="M135 65 Q152 105 135 145" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <path d="M170 45 Q205 105 170 165" fill="none" stroke="#e5e9f2" stroke-width="3" stroke-linecap="round"/>
+      <path d="M212 20 Q268 105 212 190" fill="none" stroke="#b7c0d3" stroke-width="3" stroke-linecap="round"/>
+      <path d="M262 5 Q330 105 262 205" fill="none" stroke="#8b96ad" stroke-width="3" stroke-linecap="round"/>
+      <path d="M318 0 Q392 105 318 210" fill="none" stroke="#6b7690" stroke-width="3" stroke-linecap="round"/>
+      <circle id="obj" cx="430" cy="105" r="10" fill="#a8895a"/>
+    </svg>
+    <div class="cap">Smart Intelligent Guidance<br>&amp; Mobility Assistant</div>
+  </section>
+  </div>
+
+  <div class="col">
+  <section class="card mapcard">
+    <div class="row"><div><h2>Lokasi pengguna</h2><p class="s" id="gpsInfo">Menunggu data GPS</p></div></div>
+    <div id="map"></div>
+    <div class="gps">
+      <div><div class="k">Latitude</div><div class="v" id="lat">-</div></div>
+      <div class="r"><div class="k">Longitude</div><div class="v" id="lng">-</div></div>
+      <div><div class="k">Waktu GPS (WIB)</div><div class="v" id="wgps">-</div></div>
+      <div class="r"><div class="k">Satelit / Kecepatan</div><div class="v" id="sat">-</div></div>
+    </div>
+    <div><a class="btn off" id="gmaps" target="_blank" rel="noopener">Buka di Google Maps</a></div>
+  </section>
+  </div>
+  </div>
+
+  <div class="status" style="margin-top:21px"><span class="dot off" id="dot"></span><span id="stat">Menghubungkan...</span></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ===== ISI SESUAI PUNYAMU =====
+const DB = "https://ISI-URL-DATABASE-MU.firebaseio.com"; // tanpa garis miring di akhir
+const PATH_LOKASI = "/sigma/lokasi.json";   // dikirim sketch GPS tiap 5 menit
+const PATH_JARAK  = "/sigma.json";          // data jarak dari prototipe sebelumnya
+const BATAS_CM = 60;                        // samakan dengan JARAK_BAHAYA_CM di sketch
+const POLL_MS = 3000;
+
+const $ = id => document.getElementById(id);
+$("batas").textContent = BATAS_CM;
+
+// ===== Peta =====
+const map = L.map("map").setView([-2.5, 118], 4);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  {subdomains: "abcd", maxZoom: 19, attribution: "&copy; OpenStreetMap, &copy; CARTO"}).addTo(map);
+setTimeout(() => map.invalidateSize(), 300);
+window.addEventListener("resize", () => map.invalidateSize());
+let marker = null, jejak = L.polyline([], {color: "#a8895a", weight: 4}).addTo(map), first = true;
+
+function updatePeta(lat, lng) {
+  const p = [lat, lng];
+  if (!marker) marker = L.circleMarker(p, {radius: 10, color: "#fff", weight: 3, fillColor: "#a8895a", fillOpacity: 1}).addTo(map);
+  else marker.setLatLng(p);
+  const pts = jejak.getLatLngs();
+  if (!pts.length || pts[pts.length-1].lat !== lat || pts[pts.length-1].lng !== lng) jejak.addLatLng(p);
+  if (first) { map.setView(p, 17); first = false; } else map.panTo(p);
+}
+
+// ===== Jarak =====
+function updateJarak(d) {
+  let cm = null;
+  if (d) cm = Number(d.jarak ?? d.distance ?? d.cm ?? d.jarak_cm);
+  if (cm == null || isNaN(cm) || cm < 0 || cm > 400) {
+    $("jarak").textContent = d ? "Di luar jangkauan" : "Menunggu data";
+    $("jarak").className = "big";
+    $("jarakSub").textContent = d ? "Tidak ada pantulan dalam 4 meter" : "Belum ada data dari tongkat";
+    $("fill").style.width = "0";
+    $("obj").setAttribute("cx", 560);
+    $("badge").textContent = "Aman"; $("badge").className = "badge";
+    return;
+  }
+  const bahaya = cm <= BATAS_CM;
+  $("jarak").textContent = cm.toFixed(0) + " cm";
+  $("jarak").className = "big" + (bahaya ? " warn" : "");
+  $("jarakSub").textContent = bahaya ? "Halangan sangat dekat" : "Halangan terdeteksi, jarak masih aman";
+  $("fill").style.width = Math.max(2, cm / 4) + "%";
+  $("obj").setAttribute("cx", 140 + cm / 400 * 420);
+  $("badge").textContent = bahaya ? "Waspada" : "Aman";
+  $("badge").className = "badge" + (bahaya ? " warn" : "");
+}
+
+// ===== Lokasi =====
+function wib(utc) {
+  const m = /^(\d+):(\d+):(\d+)$/.exec(utc || "");
+  if (!m) return "-";
+  const h = (+m[1] + 7) % 24;
+  return String(h).padStart(2,"0") + ":" + m[2] + ":" + m[3];
+}
+function updateLokasi(d) {
+  if (!d) { $("gpsInfo").textContent = "Belum ada data GPS"; return; }
+  if (!d.fix) { $("gpsInfo").textContent = "GPS belum mendapat sinyal satelit"; $("sat").textContent = (d.sat ?? 0) + " satelit"; return; }
+  $("gpsInfo").textContent = "Lokasi terakhir diterima";
+  $("lat").textContent = d.lat.toFixed(6);
+  $("lng").textContent = d.lng.toFixed(6);
+  $("wgps").textContent = wib(d.waktu_utc);
+  $("sat").textContent = d.sat + " / " + Number(d.kecepatan || 0).toFixed(1) + " km/j";
+  const g = $("gmaps"); g.href = d.link || `https://www.google.com/maps?q=${d.lat},${d.lng}`; g.classList.remove("off");
+  updatePeta(d.lat, d.lng);
+}
+
+// ===== Polling Firebase =====
+async function ambil(path) {
+  const r = await fetch(DB + path, {cache: "no-store"});
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+async function tick() {
+  try {
+    const [jarak, lokasi] = await Promise.all([ambil(PATH_JARAK), ambil(PATH_LOKASI)]);
+    updateJarak(jarak); updateLokasi(lokasi);
+    $("sinyal").textContent = new Date().toLocaleTimeString("id-ID", {hour12: false});
+    $("dot").className = "dot"; $("stat").textContent = "Terhubung, data masuk langsung";
+  } catch (e) {
+    $("dot").className = "dot off"; $("stat").textContent = "Gagal mengambil data (" + e.message + ")";
+  }
+}
+tick(); setInterval(tick, POLL_MS);
+</script>
+</body>
+</html>
