@@ -101,7 +101,8 @@ const DB = "https://console.firebase.google.com/project/sigma-d48ff/database/sig
 
 // Jalur data. Firmware ESP32 harus menulis jarak ke /sigma/jarak
 // dan GPS ke /sigma/lokasi.
-const PATH_JARAK = "/sigma/jarak.json";
+// Cocokkan dua path ini dengan lokasi data yang benar-benar ditulis firmware ESP32.
+const PATH_JARAK = "/sigma.json";
 const PATH_LOKASI = "/sigma/lokasi.json";
 const BATAS_CM = 60;
 const POLL_MS = 3000;
@@ -119,9 +120,9 @@ function initMap() {
     return;
   }
   map = L.map("map").setView([-2.5, 118], 4);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd", maxZoom: 19,
-    attribution: "&copy; OpenStreetMap, &copy; CARTO"
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
   jejak = L.polyline([], {color:"#a8895a", weight:4}).addTo(map);
   setTimeout(() => map.invalidateSize(), 300);
@@ -206,7 +207,10 @@ async function ambil(path) {
     throw new Error("URL Firebase belum diisi pada variabel DB");
   }
   const response = await fetch(DB + path, {cache:"no-store"});
-  if (!response.ok) throw new Error("HTTP " + response.status + " pada " + path);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error("HTTP " + response.status + " pada " + path + (body ? " — " + body.slice(0, 180) : ""));
+  }
   return response.json();
 }
 
